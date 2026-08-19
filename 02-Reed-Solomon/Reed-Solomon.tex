@@ -1,0 +1,298 @@
+\documentclass{mathos}
+
+\usepackage{tikz}
+
+\begin{document}
+\renewcommand\bibname{Literatura}
+
+
+\begin{titlepage}
+\begin{center}
+    \includegraphics[keepaspectratio=true,scale=0.4]{MathosLogo.png} \\ \vspace{1mm}
+       \textsc{Sveučilište Josipa Jurja Strossmayera u Osijeku} \\
+    \vspace{2mm}
+    \textsc{Odjel za matematiku}
+\end{center}
+
+\begin{center}
+    \vspace{4mm}
+     {Sveučilišni diplomski studij matematike \\ smjer: Matematika i računarstvo}
+\end{center}
+
+\vspace{25mm}
+\begin{center}
+    {\LARGE{\bf  Reed-Solomonovi kodovi za ispravljanje pogrešaka}}
+
+    \vspace{15mm}
+    {\large{\sc Seminarski rad}}
+\end{center}
+
+\vspace{50mm}
+
+\begin{minipage}[t]{0.47\textwidth}
+	{Mentor:} \normalsize\vspace{3mm}
+	{\bf\\ \large{Ime i prezime mentora}}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}\raggedleft
+	{{Kandidat:}{\normalsize\vspace{3mm} \bf\\ \large{Jurica Jurčević}}}
+\end{minipage}
+
+\vspace*{\fill}
+\centering{\normalsize{Osijek, 2026.}}
+\end{titlepage}
+
+
+\tableofcontents
+\thispagestyle{empty}
+
+
+\chapter{Uvod}\label{Uvod}
+\pagenumbering{arabic}
+
+\noindent
+Podatak koji putuje kroz stvarni kanal rijetko stigne netaknut. Grebotina na CD-u, oštećen dio QR koda, šum na radijskoj vezi, sve to mijenja pojedine bitove. Kodovi za ispravljanje pogrešaka rješavaju taj problem tako da uz podatak pošalju dodatne simbole iz kojih se izvorni podatak može rekonstruirati, čak i kad dio primljenog niza nije točan.
+
+Reed-Solomonovi kodovi jedni su od najraširenijih takvih kodova. Irving Reed i Gustave Solomon opisali su ih 1960.\ godine u kratkom radu od pet stranica \cite{reedsolomon}. Ideja je algebarska. Podatak se shvati kao polinom nad konačnim poljem, a kodna riječ nastaje iz vrijednosti tog polinoma. Dvije razne poruke daju polinome koji se podudaraju u malom broju točaka, pa se i njihove kodne riječi razlikuju na dovoljno mjesta da se pogreške mogu i otkriti i ispraviti.
+
+Snaga tih kodova je u radu sa simbolima, ne s pojedinačnim bitovima. Jedan simbol nad poljem $GF(2^8)$ nosi osam bitova, a kôd ga tretira kao jednu jedinicu. Oštećenje cijelog bajta broji se kao jedna pogreška, bez obzira na to koliko je bitova unutar njega promijenjeno. Zato su Reed-Solomonovi kodovi dobri protiv rafalnih pogrešaka, onih koje pogode niz uzastopnih bitova odjednom. Upravo takve nastaju kod grebotine na disku.
+
+Rad kreće od potrebne algebre, konačnih polja i polinoma nad njima. Zatim definira kôd i pokazuje kodiranje preko generirajućeg polinoma. Slijedi dekodiranje, koje je zahtjevniji dio, kroz sindrome, Berlekamp-Masseyev algoritam, Chienovu pretragu i Forneyev algoritam. Svaki korak prati potpuno proveden brojčani primjer nad malim poljem $GF(8)$. Na kraju su primjene i kratak osvrt na granice kôda. Svi brojčani rezultati u radu proizvedeni su priloženom implementacijom \verb|kod/rs.py|.
+
+
+\chapter{Matematička podloga}\label{podloga}
+
+\section{Konačna polja}
+
+Reed-Solomonovi kodovi rade nad konačnim poljem. Za svaki prosti broj $p$ i prirodan broj $m$ postoji polje s $p^m$ elemenata, jedinstveno do na izomorfizam, koje označavamo s $GF(p^m)$. U praksi je gotovo uvijek $p = 2$, jer se tada jedan simbol poklapa s nizom bitova. Polje $GF(2^8)$ ima 256 elemenata i svaki od njih stane u jedan bajt.
+
+\begin{defin}
+Polje $GF(2^m)$ konstruiramo kao skup polinoma nad $GF(2)$ stupnja manjeg od $m$, uz zbrajanje i množenje po modulu nekog nesvodljivog polinoma stupnja $m$.
+\end{defin}
+
+\noindent
+Zbrajanje u $GF(2^m)$ je zbrajanje polinoma nad $GF(2)$, što se svodi na operaciju \emph{iskljucivo ili} po bitovima. Množenje je množenje polinoma, a zatim uzimanje ostatka po nesvodljivom polinomu. Svaki element različit od nule može se zapisati kao potencija jednog jedinog elementa $\alpha$, koji zovemo primitivnim. To svojstvo je ono što cijelu konstrukciju čini upotrebljivom.
+
+\begin{primjer}\label{prim:gf8}
+Uzmimo $GF(8)$ s nesvodljivim polinomom $x^3 + x + 1$. Primitivni element je $\alpha = x$, pa vrijedi $\alpha^3 = \alpha + 1$. Uzastopnim množenjem dobivamo cijelu tablicu polja:
+\end{primjer}
+
+\begin{table}[hbtp]
+\centering
+\begin{tabular}{|c|c|c|}\hline
+potencija & polinom & bitovi \\\hline
+$\alpha^0$ & $1$ & $001$ \\\hline
+$\alpha^1$ & $x$ & $010$ \\\hline
+$\alpha^2$ & $x^2$ & $100$ \\\hline
+$\alpha^3$ & $x+1$ & $011$ \\\hline
+$\alpha^4$ & $x^2+x$ & $110$ \\\hline
+$\alpha^5$ & $x^2+x+1$ & $111$ \\\hline
+$\alpha^6$ & $x^2+1$ & $101$ \\\hline
+\end{tabular}
+\caption{Elementi polja $GF(8)$ kao potencije primitivnog elementa $\alpha$.}
+\label{tab:gf8}
+\end{table}
+
+\noindent
+Iz tablice se lako množi. Umnožak $\alpha^i \cdot \alpha^j$ je $\alpha^{(i+j) \bmod 7}$, jer je $\alpha^7 = 1$. Tako se množenje svodi na zbrajanje eksponenata, a dijeljenje na oduzimanje. Priložena implementacija upravo ovako radi, s tablicom logaritama i tablicom potencija.
+
+\section{Polinomi nad poljem}
+
+Poruku duljine $k$ simbola shvaćamo kao polinom
+\begin{align*}
+    m(x) = m_{k-1} x^{k-1} + \dots + m_1 x + m_0,
+\end{align*}
+gdje su koeficijenti $m_i$ elementi polja $GF(2^m)$. Kodiranje i dekodiranje su operacije nad takvim polinomima. Ključna činjenica koju koristimo je da polinom stupnja $d$ nad poljem ima najviše $d$ nultočaka. Iz toga slijedi razmak između kodnih riječi, a razmak je ono što omogućuje ispravljanje.
+
+
+\chapter{Definicija kôda i kodiranje}\label{kodiranje}
+
+\section{Parametri kôda}
+
+Reed-Solomonov kôd označavamo s $RS(n, k)$. Ovdje je $n$ duljina kodne riječi u simbolima, a $k$ broj podatkovnih simbola. Za polje $GF(2^m)$ vrijedi $n = 2^m - 1$ za puni kôd, dok su kraće inačice dopuštene. Razlika $n - k$ je broj dodatnih, paritetnih simbola.
+
+\begin{teorem}[{vidjeti \cite[pogl.\ 5]{macwilliams}}]\label{tm:mds}
+Minimalna udaljenost Reed-Solomonovog kôda $RS(n,k)$ iznosi $d = n - k + 1$. Kôd time dostiže Singletonovu granicu $d \le n - k + 1$ s jednakošću, pa je optimalan u smislu razmaka.
+\end{teorem}
+
+\noindent
+Kôd s minimalnom udaljenošću $d$ ispravlja do
+\begin{align*}
+    t = \left\lfloor \frac{d-1}{2} \right\rfloor = \left\lfloor \frac{n-k}{2} \right\rfloor
+\end{align*}
+pogrešaka. Svaki dodatni paritetni simbol podiže sposobnost ispravljanja za pola pogreške. Dva paritetna simbola ispravljaju jednu pogrešku, deset ih ispravlja pet.
+
+\section{Generirajući polinom}
+
+Sistematsko kodiranje gradi kodnu riječ tako da podatak ostane vidljiv u njoj, a paritet se doda ispred. Temelji se na generirajućem polinomu
+\begin{align}\label{eq:gen}
+    g(x) = \prod_{i=1}^{n-k} (x - \alpha^i),
+\end{align}
+čije su nultočke uzastopne potencije primitivnog elementa. Kodna riječ mora biti djeljiva s $g(x)$. Za poruku $m(x)$ računamo
+\begin{align}\label{eq:kod}
+    c(x) = x^{n-k} m(x) - \big(x^{n-k} m(x) \bmod g(x)\big).
+\end{align}
+Prvi član pomiče podatak za $n-k$ mjesta i ostavlja prazan prostor za paritet. Drugi član je ostatak dijeljenja, koji se oduzme kako bi razlika bila djeljiva s $g(x)$. U polju karakteristike 2 oduzimanje i zbrajanje su ista operacija.
+
+\begin{primjer}\label{prim:kod}
+Za $RS(7,3)$ nad $GF(8)$ imamo $n-k = 4$ paritetna simbola, pa kôd ispravlja $t = 2$ pogreške. Generirajući polinom prema \eqref{eq:gen} ispada
+\begin{align*}
+    g(x) = x^4 + \alpha^3 x^3 + x^2 + \alpha^1 x + \alpha^3.
+\end{align*}
+Uzmimo poruku $m(x) = x^2$. Formula \eqref{eq:kod} daje kodnu riječ
+\begin{align*}
+    c(x) = x^6 + \alpha^4 x^3 + x^2 + \alpha^4 x + \alpha^5.
+\end{align*}
+Provjera potvrđuje da je $c(\alpha^j) = 0$ za $j = 1, 2, 3, 4$, dakle kodna riječ je djeljiva s $g(x)$.
+\end{primjer}
+
+
+\chapter{Dekodiranje}\label{dekodiranje}
+
+Dekodiranje je teži smjer. Primatelj dobiva riječ $r(x) = c(x) + e(x)$, gdje je $e(x)$ nepoznati polinom pogreške. Treba pronaći gdje su pogreške i kolike su, a da se ne zna ni koliko ih ima. Postupak ide u četiri koraka.
+
+\section{Sindromi}
+
+Sindrom je vrijednost primljene riječi u jednoj nultočki generirajućeg polinoma:
+\begin{align}\label{eq:sind}
+    S_j = r(\alpha^j) = c(\alpha^j) + e(\alpha^j) = e(\alpha^j), \qquad j = 1, \dots, n-k.
+\end{align}
+Kako je $c(\alpha^j) = 0$, sindrom ovisi samo o pogrešci. Ako su svi sindromi nula, primljena riječ je ispravna kodna riječ i dekodiranje staje. Inače sindromi nose podatke o pogreškama, ali u zamotanom obliku koji tek treba razriješiti.
+
+\begin{primjer}\label{prim:sind}
+Nastavljamo primjer~\ref{prim:kod}. Neka se kodna riječ ošteti na dva mjesta, s pogreškom $\alpha^2$ na poziciji $x^5$ i pogreškom $\alpha^3$ na poziciji $x^2$. Primljena riječ je
+\begin{align*}
+    r(x) = x^6 + \alpha^2 x^5 + \alpha^4 x^3 + \alpha^1 x^2 + \alpha^4 x + \alpha^5.
+\end{align*}
+Uvrštavanjem prema \eqref{eq:sind} dobivamo sindrome
+\begin{align*}
+    (S_1, S_2, S_3, S_4) = (\alpha^4,\ \alpha^4,\ \alpha^5,\ \alpha^2).
+\end{align*}
+Nisu svi nula, pa riječ sadrži pogreške.
+\end{primjer}
+
+\section{Polinom lokatora pogrešaka}
+
+Neka su pogreške na pozicijama iz skupa indeksa. Za svaku pogrešku definiramo lokator $X_l = \alpha^{i_l}$, gdje je $i_l$ pozicija. Polinom lokatora pogrešaka je
+\begin{align*}
+    \Lambda(x) = \prod_{l} (1 - X_l x),
+\end{align*}
+a njegove nultočke su inverzi lokatora. Sindromi i koeficijenti od $\Lambda(x)$ povezani su sustavom linearnih jednadžbi. Taj sustav rješava Berlekamp-Masseyev algoritam, koji gradi $\Lambda(x)$ postupno, dodajući jedan sindrom po koraku i ispravljajući polinom kad se ne slaže s idućim sindromom. Algoritam usput otkriva i broj pogrešaka, što unaprijed nismo znali.
+
+\begin{primjer}\label{prim:lambda}
+Za sindrome iz primjera~\ref{prim:sind} Berlekamp-Masseyev algoritam vraća
+\begin{align*}
+    \Lambda(x) = x^2 + \alpha^3 x + 1,
+\end{align*}
+polinom stupnja 2, što znači dvije pogreške. To se slaže s onim što smo ubacili.
+\end{primjer}
+
+\section{Chienova pretraga}
+
+Nultočke od $\Lambda(x)$ nalazimo iscrpnom provjerom svih elemenata polja. To je Chienova pretraga. Za svaku poziciju $i$ provjerimo je li $\Lambda(\alpha^{-i}) = 0$. Ako jest, na toj poziciji je pogreška. Polje je konačno, pa je pretraga uvijek izvediva, a u sklopovlju se izvodi vrlo brzo.
+
+\begin{primjer}\label{prim:chien}
+Pretraga nad $\Lambda(x)$ iz primjera~\ref{prim:lambda} pronalazi nultočke koje odgovaraju pozicijama $x^2$ i $x^5$. To su točno mjesta na kojima smo unijeli pogreške.
+\end{primjer}
+
+\section{Forneyev algoritam}
+
+Ostaje odrediti kolike su pogreške. Forneyev algoritam daje vrijednost pogreške na svakoj pronađenoj poziciji preko formule koja koristi polinom sindroma, polinom lokatora i njegovu formalnu derivaciju. Definiramo evaluator pogreške
+\begin{align*}
+    \Omega(x) = S(x)\, \Lambda(x) \bmod x^{n-k},
+\end{align*}
+a vrijednost pogreške na poziciji s lokatorom $X_l$ je
+\begin{align*}
+    e_l = \frac{\Omega(X_l^{-1})}{\Lambda'(X_l^{-1})}.
+\end{align*}
+Kad znamo i pozicije i vrijednosti, pogrešku oduzmemo od primljene riječi i dobijemo natrag kodnu riječ.
+
+\begin{primjer}\label{prim:forney}
+Za naš primjer evaluator ispada $\Omega(x) = \alpha^5 x + \alpha^4$. Forneyeva formula na pozicijama $x^2$ i $x^5$ daje vrijednosti $\alpha^3$ odnosno $\alpha^2$. To su upravo unesene pogreške. Oduzimanjem od $r(x)$ vraćamo se na
+\begin{align*}
+    c(x) = x^6 + \alpha^4 x^3 + x^2 + \alpha^4 x + \alpha^5,
+\end{align*}
+izvornu kodnu riječ iz primjera~\ref{prim:kod}. Ispravak je potpun.
+\end{primjer}
+
+\section{Primjer nad većim poljem}
+
+Mali primjer nad $GF(8)$ pokazuje mehaniku, ali stvarni kodovi rade nad $GF(256)$. Priložena implementacija kodira 17 podatkovnih simbola s 10 paritetnih, pa ispravlja do 5 pogrešaka. Poruka je niz znakova \verb|Reed-Solomon 1960|. Nakon što se ošteti pet simbola na različitim pozicijama, dekoder pronalazi svih pet i vraća izvornu poruku bez greške.
+
+Granica ispravljivosti je oštra. Uz 10 paritetnih simbola šest pogrešaka je previše, i implementacija to prijavljuje umjesto da vrati krivi rezultat. Ovo je važno svojstvo. Kôd zna kad je premašen, pa se pogrešan ispravak može izbjeći.
+
+
+\chapter{Primjene}\label{primjene}
+
+\noindent
+Reed-Solomonovi kodovi su posvuda gdje podaci prolaze kroz nepouzdan kanal ili medij.
+
+Na CD-u i DVD-u koristi se kombinacija dvaju isprepletenih Reed-Solomonovih kodova, poznata kao CIRC. Isprepletanje razbija dugu grebotinu na mnogo kratkih pogrešaka koje pojedini kôd lako ispravlja. Zahvaljujući tome disk s vidljivim ogrebotinama i dalje svira bez preskakanja.
+
+QR kodovi ugrađuju Reed-Solomonov paritet u samu sliku. Ovisno o razini zaštite, ispravlja se od 7 do 30 posto oštećenih simbola. Zato QR kôd radi i kad je dio prekriven logotipom ili zamrljan.
+
+RAID-6 sustavi za pohranu koriste Reed-Solomonovu aritmetiku za drugi paritetni disk. Time podnose ispad dvaju diskova istovremeno, bez gubitka podataka.
+
+U svemirskim misijama kôd je bio dio komunikacije sonde Voyager, gdje se slabi signal s ruba Sunčeva sustava ispravljao na Zemlji. Slična shema živi u standardima digitalne televizije DVB i u dubinskom svemirskom komuniciranju \cite{wicker}.
+
+Zajedničko svim tim primjenama je rad sa simbolima. Rafalna pogreška koja bi kôd nad pojedinačnim bitovima preplavila ovdje pogađa mali broj simbola, i kôd je ispravi.
+
+
+\chapter{Zaključak}\label{zakljucak}
+
+\noindent
+Reed-Solomonovi kodovi spajaju čistu algebru s vrlo praktičnim rezultatom. Poruka postaje polinom nad konačnim poljem, paritet nastaje iz djeljivosti generirajućim polinomom, a dekodiranje kroz četiri koraka vraća izvorne podatke i onda kad je dio primljenog niza oštećen. Proveden primjer nad $GF(8)$ pokazao je cijeli put, od kodiranja preko sindroma i lokatora do konačnog ispravka dvije pogreške.
+
+Snaga kôda leži u radu sa simbolima i u dostizanju Singletonove granice, čime je optimalan u smislu razmaka među kodnim riječima. Granica ispravljivosti je poznata unaprijed i kôd zna kad je premašen. Ta kombinacija pouzdanosti i predvidivosti objašnjava zašto je kôd iz 1960.\ godine i danas ugrađen u diskove, QR kodove, sustave pohrane i svemirske veze.
+
+
+\begin{thebibliography}{30}
+\addcontentsline{toc}{chapter}{Literatura}
+
+\bibitem{reedsolomon}
+{\sc I.~S.~Reed, G.~Solomon}, {\em Polynomial Codes over Certain Finite Fields}, Journal of the Society for Industrial and Applied Mathematics {\bf 8}(1960), 300--304.
+
+\bibitem{macwilliams}
+{\sc F.~J.~MacWilliams, N.~J.~A.~Sloane}, {\em The Theory of Error-Correcting Codes}, North-Holland, Amsterdam, 1977.
+
+\bibitem{wicker}
+{\sc S.~B.~Wicker, V.~K.~Bhargava (ur.)}, {\em Reed-Solomon Codes and Their Applications}, IEEE Press, New York, 1994.
+
+\bibitem{lidl}
+{\sc R.~Lidl, H.~Niederreiter}, {\em Introduction to Finite Fields and Their Applications}, Cambridge University Press, Cambridge, 1994.
+
+\bibitem{geisel}
+{\sc W.~A.~Geisel}, {\em Tutorial on Reed-Solomon Error Correction Coding}, NASA Technical Memorandum 102162, 1990.
+\end{thebibliography}
+
+
+\chapter*{Sažetak}
+\markboth{}{SAŽETAK}
+\addcontentsline{toc}{chapter}{Sažetak}
+
+Reed-Solomonovi kodovi ispravljaju pogreške nastale prijenosom podataka kroz nepouzdane kanale. Rad izlaže potrebnu algebru konačnih polja $GF(2^m)$ i polinoma nad njima, definira kôd $RS(n,k)$ i njegovu minimalnu udaljenost, te opisuje sistematsko kodiranje generirajućim polinomom. Dekodiranje je prikazano kroz sindrome, Berlekamp-Masseyev algoritam, Chienovu pretragu i Forneyev algoritam, uz potpuno proveden brojčani primjer nad poljem $GF(8)$ koji ispravlja dvije pogreške. Na kraju su navedene primjene u optičkim medijima, QR kodovima, sustavima pohrane i svemirskim komunikacijama.
+
+\section*{Ključne riječi}
+
+reed-solomonovi kodovi, ispravljanje pogrešaka, konačna polja, generirajući polinom, berlekamp-massey, kodiranje kanala
+
+
+\chapter*{Naslov rada na engleskom jeziku}
+\markboth{}{SUMMARY}
+
+\section*{Summary}
+\addcontentsline{toc}{chapter}{Summary}
+
+Reed-Solomon codes correct errors introduced when data passes through unreliable channels. This paper presents the required algebra of finite fields $GF(2^m)$ and polynomials over them, defines the $RS(n,k)$ code and its minimum distance, and describes systematic encoding by a generator polynomial. Decoding is shown through syndromes, the Berlekamp-Massey algorithm, the Chien search, and the Forney algorithm, with a fully worked numerical example over $GF(8)$ that corrects two errors. Applications in optical media, QR codes, storage systems, and space communication close the paper.
+
+\section*{Keywords}
+
+reed-solomon codes, error correction, finite fields, generator polynomial, berlekamp-massey, channel coding
+
+
+\chapter*{Životopis}
+\addcontentsline{toc}{chapter}{Životopis}
+
+Ovdje pišem životopis u prvom licu jednine.
+
+\end{document}
