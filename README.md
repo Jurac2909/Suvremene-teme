@@ -28,23 +28,15 @@ pa iste ulaze protiv pripremljenog upita gdje napad više ne prolazi.
 ### SQL injection, web demo za prezentaciju
 
 ```
-python 01-SQL-Injection/demo-web/app.py
+python 01-SQL-Injection/demo-trgovina/app.py
 ```
 
-Zatim otvori <http://127.0.0.1:8000>. Trgovina ima tri ranjive točke (prijava,
-pretraga, provjera imena). Prekidač gore desno prebacuje između ranjive i sigurne
-inačice, pa se isti napad pokaže uživo i onda pokaže da na ispravljenoj verziji
-više ne radi. Tijek prezentacije korak po korak je u
-[`demo-web/README.md`](01-SQL-Injection/demo-web/README.md).
-
-Dok demo radi u ranjivom načinu, u drugom terminalu:
-
-```
-python 01-SQL-Injection/demo-web/blind_extract.py
-```
-
-Skripta rekonstruira cijeli broj kartice samo iz da/ne odgovora stranice koja
-ne prikazuje nijedan podatak. Slijepi (boolean-based) napad, znak po znak.
+Zatim otvori <http://127.0.0.1:8000>. Realistična web trgovina s tri ranjive
+točke (prijava, tražilica, `id` proizvoda u adresi) na kojoj se SQL injection
+izvodi ručno, kao pravi napadač. Sitni prekidač zaštite u podnožju prebacuje na
+parametrizirane upite, pa se isti napad pokaže uživo i onda pokaže da na
+zaštićenoj verziji više ne prolazi. Tijek prezentacije korak po korak i gotovi
+payloadi su u [`demo-trgovina/README.md`](01-SQL-Injection/demo-trgovina/README.md).
 
 Datoteke [`kod/ranjivo.php`](01-SQL-Injection/kod/ranjivo.php) i
 [`kod/sigurno.php`](01-SQL-Injection/kod/sigurno.php) su isječci iz rada za

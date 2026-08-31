@@ -29,14 +29,9 @@
 
 \vspace{50mm}
 
-\begin{minipage}[t]{0.47\textwidth}
-	{Mentor:} \normalsize\vspace{3mm}
-	{\bf\\ \large{Ime i prezime mentora}}
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.47\textwidth}\raggedleft
-	{{Kandidat:}{\normalsize\vspace{3mm} \bf\\ \large{Jurica Jurčević}}}
-\end{minipage}
+\begin{flushright}
+	{\large{\bf Jurica Jurčević}}
+\end{flushright}
 
 \vspace*{\fill}
 \centering{\normalsize{Osijek, 2026.}}
@@ -53,25 +48,33 @@
 \noindent
 Podatak koji putuje kroz stvarni kanal rijetko stigne netaknut. Grebotina na CD-u, oštećen dio QR koda, šum na radijskoj vezi, sve to mijenja pojedine bitove. Kodovi za ispravljanje pogrešaka rješavaju taj problem tako da uz podatak pošalju dodatne simbole iz kojih se izvorni podatak može rekonstruirati, čak i kad dio primljenog niza nije točan.
 
-Reed-Solomonovi kodovi jedni su od najraširenijih takvih kodova. Irving Reed i Gustave Solomon opisali su ih 1960.\ godine u kratkom radu od pet stranica \cite{reedsolomon}. Ideja je algebarska. Podatak se shvati kao polinom nad konačnim poljem, a kodna riječ nastaje iz vrijednosti tog polinoma. Dvije razne poruke daju polinome koji se podudaraju u malom broju točaka, pa se i njihove kodne riječi razlikuju na dovoljno mjesta da se pogreške mogu i otkriti i ispraviti.
+Reed-Solomonovi kodovi jedni su od najraširenijih takvih kodova. Irving Reed i Gustave Solomon opisali su ih 1960.\ godine u kratkom radu od pet stranica \cite{reedsolomon}. Ideja je algebarska. Podatak se shvati kao polinom, a kodna riječ nastaje iz vrijednosti tog polinoma. Dvije razne poruke daju polinome koji se podudaraju u malom broju točaka, pa se i njihove kodne riječi razlikuju na dovoljno mjesta da se pogreške mogu i otkriti i ispraviti.
 
-Snaga tih kodova je u radu sa simbolima, ne s pojedinačnim bitovima. Jedan simbol nad poljem $GF(2^8)$ nosi osam bitova, a kôd ga tretira kao jednu jedinicu. Oštećenje cijelog bajta broji se kao jedna pogreška, bez obzira na to koliko je bitova unutar njega promijenjeno. Zato su Reed-Solomonovi kodovi dobri protiv rafalnih pogrešaka, onih koje pogode niz uzastopnih bitova odjednom. Upravo takve nastaju kod grebotine na disku.
+Snaga tih kodova je u radu sa simbolima, a ne s pojedinačnim bitovima. Jedan simbol, primjerice jedan bajt, kôd tretira kao cjelinu, pa se oštećenje cijelog bajta broji kao jedna pogreška bez obzira na to koliko je bitova u njemu promijenjeno. Zato su dobri protiv rafalnih pogrešaka, onih koje pogode niz uzastopnih bitova odjednom, kakve nastaju kod grebotine na disku.
 
-Rad kreće od potrebne algebre, konačnih polja i polinoma nad njima. Zatim definira kôd i pokazuje kodiranje preko generirajućeg polinoma. Slijedi dekodiranje, koje je zahtjevniji dio, kroz sindrome, Berlekamp-Masseyev algoritam, Chienovu pretragu i Forneyev algoritam. Svaki korak prati potpuno proveden brojčani primjer nad malim poljem $GF(8)$. Na kraju su primjene i kratak osvrt na granice kôda. Svi brojčani rezultati u radu proizvedeni su priloženom implementacijom \verb|kod/rs.py|.
+Nakon kratkog povijesnog osvrta, rad kreće od potrebne algebre, konačnih polja i polinoma nad njima. Zatim definira kôd i pokazuje kodiranje preko generirajućeg polinoma. Slijedi dekodiranje, koje je zahtjevniji dio, kroz sindrome, Berlekamp-Masseyev algoritam, Chienovu pretragu i Forneyev algoritam. Svaki korak prati potpuno proveden brojčani primjer nad malim poljem. Na kraju su primjene i kratak osvrt na granice kôda. Svi brojčani rezultati u radu proizvedeni su priloženom implementacijom \verb|kod/rs.py|.
+
+
+\chapter{Povijesni razvoj}\label{povijest}
+
+\noindent
+Irving S.\ Reed i Gustave Solomon opisali su kôd 1960.\ godine, radeći u Lincolnovu laboratoriju MIT-a \cite{reedsolomon}. Pristup im je bio algebarski, a opis koji ovaj rad koristi, izvornome ekvivalentan, ustalio se nešto kasnije.
+
+Kôd je isprva bio ispred svog vremena jer učinkovit postupak dekodiranja nije postojao. To se promijenilo krajem šezdesetih, kada su Berlekamp (1968.) i Massey (1969.) dali algoritam koji i danas čini jezgru dekodera. Prvu veliku primjenu kôd je našao u svemirskom programu Voyager 1977.\ godine, a široku upotrebu donio je kompaktni disk 1982.; otad je posvuda gdje podaci prolaze nepouzdanim kanalom \cite{wicker}.
 
 
 \chapter{Matematička podloga}\label{podloga}
 
 \section{Konačna polja}
 
-Reed-Solomonovi kodovi rade nad konačnim poljem. Za svaki prosti broj $p$ i prirodan broj $m$ postoji polje s $p^m$ elemenata, jedinstveno do na izomorfizam, koje označavamo s $GF(p^m)$. U praksi je gotovo uvijek $p = 2$, jer se tada jedan simbol poklapa s nizom bitova. Polje $GF(2^8)$ ima 256 elemenata i svaki od njih stane u jedan bajt.
+Reed-Solomonovi kodovi rade nad konačnim poljem. Polje je skup na kojem su definirani zbrajanje, oduzimanje, množenje i dijeljenje s uobičajenim svojstvima, a konačno je ono s konačno mnogo elemenata. Za svaki prosti broj $p$ i prirodan broj $m$ postoji polje s $p^m$ elemenata, jedinstveno do na izomorfizam, koje označavamo s $GF(p^m)$. Oznaka $GF$ dolazi od engleskog \emph{Galois field}, tj.\ Galoisovo polje, po Évaristeu Galoisu. U praksi je gotovo uvijek $p = 2$, jer se tada jedan simbol poklapa s nizom bitova. Polje $GF(2^8)$ ima 256 elemenata i svaki od njih stane u jedan bajt.
 
 \begin{defin}
 Polje $GF(2^m)$ konstruiramo kao skup polinoma nad $GF(2)$ stupnja manjeg od $m$, uz zbrajanje i množenje po modulu nekog nesvodljivog polinoma stupnja $m$.
 \end{defin}
 
 \noindent
-Zbrajanje u $GF(2^m)$ je zbrajanje polinoma nad $GF(2)$, što se svodi na operaciju \emph{iskljucivo ili} po bitovima. Množenje je množenje polinoma, a zatim uzimanje ostatka po nesvodljivom polinomu. Svaki element različit od nule može se zapisati kao potencija jednog jedinog elementa $\alpha$, koji zovemo primitivnim. To svojstvo je ono što cijelu konstrukciju čini upotrebljivom.
+Zbrajanje u $GF(2^m)$ je zbrajanje polinoma nad $GF(2)$, što se svodi na operaciju \emph{isključivo ili} po bitovima. Množenje je množenje polinoma, a zatim uzimanje ostatka po nesvodljivom polinomu. Svaki element različit od nule može se zapisati kao potencija jednog jedinog elementa $\alpha$, koji zovemo primitivnim.
 
 \begin{primjer}\label{prim:gf8}
 Uzmimo $GF(8)$ s nesvodljivim polinomom $x^3 + x + 1$. Primitivni element je $\alpha = x$, pa vrijedi $\alpha^3 = \alpha + 1$. Uzastopnim množenjem dobivamo cijelu tablicu polja:
@@ -102,7 +105,7 @@ Poruku duljine $k$ simbola shvaćamo kao polinom
 \begin{align*}
     m(x) = m_{k-1} x^{k-1} + \dots + m_1 x + m_0,
 \end{align*}
-gdje su koeficijenti $m_i$ elementi polja $GF(2^m)$. Kodiranje i dekodiranje su operacije nad takvim polinomima. Ključna činjenica koju koristimo je da polinom stupnja $d$ nad poljem ima najviše $d$ nultočaka. Iz toga slijedi razmak između kodnih riječi, a razmak je ono što omogućuje ispravljanje.
+gdje su koeficijenti $m_i$ elementi polja $GF(2^m)$. Kodiranje i dekodiranje su operacije nad takvim polinomima. Ključna činjenica koju koristimo je da polinom stupnja $d$ nad poljem ima najviše $d$ nultočaka. Odatle slijedi razmak među kodnim riječima, koji omogućuje ispravljanje.
 
 
 \chapter{Definicija kôda i kodiranje}\label{kodiranje}
@@ -219,7 +222,7 @@ izvornu kodnu riječ iz primjera~\ref{prim:kod}. Ispravak je potpun.
 
 Mali primjer nad $GF(8)$ pokazuje mehaniku, ali stvarni kodovi rade nad $GF(256)$. Priložena implementacija kodira 17 podatkovnih simbola s 10 paritetnih, pa ispravlja do 5 pogrešaka. Poruka je niz znakova \verb|Reed-Solomon 1960|. Nakon što se ošteti pet simbola na različitim pozicijama, dekoder pronalazi svih pet i vraća izvornu poruku bez greške.
 
-Granica ispravljivosti je oštra. Uz 10 paritetnih simbola šest pogrešaka je previše, i implementacija to prijavljuje umjesto da vrati krivi rezultat. Ovo je važno svojstvo. Kôd zna kad je premašen, pa se pogrešan ispravak može izbjeći.
+Granica ispravljivosti je oštra: uz 10 paritetnih simbola šest pogrešaka je previše, i implementacija to prijavljuje umjesto da vrati krivi rezultat. Time kôd zna kad je premašen, pa se pogrešan ispravak izbjegne.
 
 
 \chapter{Primjene}\label{primjene}
@@ -234,8 +237,6 @@ QR kodovi ugrađuju Reed-Solomonov paritet u samu sliku. Ovisno o razini zaštit
 RAID-6 sustavi za pohranu koriste Reed-Solomonovu aritmetiku za drugi paritetni disk. Time podnose ispad dvaju diskova istovremeno, bez gubitka podataka.
 
 U svemirskim misijama kôd je bio dio komunikacije sonde Voyager, gdje se slabi signal s ruba Sunčeva sustava ispravljao na Zemlji. Slična shema živi u standardima digitalne televizije DVB i u dubinskom svemirskom komuniciranju \cite{wicker}.
-
-Zajedničko svim tim primjenama je rad sa simbolima. Rafalna pogreška koja bi kôd nad pojedinačnim bitovima preplavila ovdje pogađa mali broj simbola, i kôd je ispravi.
 
 
 \chapter{Zaključak}\label{zakljucak}
@@ -289,10 +290,5 @@ Reed-Solomon codes correct errors introduced when data passes through unreliable
 
 reed-solomon codes, error correction, finite fields, generator polynomial, berlekamp-massey, channel coding
 
-
-\chapter*{Životopis}
-\addcontentsline{toc}{chapter}{Životopis}
-
-Ovdje pišem životopis u prvom licu jednine.
 
 \end{document}

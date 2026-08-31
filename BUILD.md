@@ -15,7 +15,6 @@ Isto za `Reed-Solomon.tex`. U VS Code-u je lakše koristiti proširenje LaTeX Wo
 Napomena: MiKTeX pri gradnji ispisuje upozorenje "major issue: So far, you have not checked for MiKTeX updates". To je samo upozorenje i ne prekida gradnju. Ukloni ga tako da u MiKTeX Console jednom pokreneš Check for updates.
 
 ## Prije predaje
-- Upiši ime mentora umjesto `Ime i prezime mentora` na naslovnici (oba rada).
 - Napiši životopis na kraju svakog rada (sada stoji zamjenski tekst).
 - Provjeri smjer studija na naslovnici ako nije Matematika i računarstvo.
 

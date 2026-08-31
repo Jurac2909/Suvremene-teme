@@ -30,14 +30,9 @@
 
 \vspace{50mm}
 
-\begin{minipage}[t]{0.47\textwidth}
-	{Mentor:} \normalsize\vspace{3mm}
-	{\bf\\ \large{Ime i prezime mentora}}
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.47\textwidth}\raggedleft
-	{{Kandidat:}{\normalsize\vspace{3mm} \bf\\ \large{Jurica Jurčević}}}
-\end{minipage}
+\begin{flushright}
+	{\large{\bf Jurica Jurčević}}
+\end{flushright}
 
 \vspace*{\fill}
 \centering{\normalsize{Osijek, 2026.}}
@@ -52,7 +47,7 @@
 \pagenumbering{arabic}
 
 \noindent
-SQL injection je napad u kojem se ulaz korisnika probije iz podatkovnog dijela upita u njegov naredbeni dio. Aplikacija očekuje ime ili broj, a napadač pošalje komad SQL koda koji baza posluša. Posljedica je čitanje tuđih podataka, zaobilaženje prijave ili, u težim slučajevima, potpuni nadzor nad poslužiteljem baze.
+SQL injection je napad u kojem se ulaz korisnika probije iz podatkovnog dijela upita u njegov naredbeni dio. Aplikacija očekuje ime ili broj, a napadač pošalje komad SQL koda koji baza posluša. Posljedica je čitanje tuđih podataka, zaobilaženje prijave ili, u težim slučajevima, potpuni nadzor nad serverom baze.
 
 Napad je star koliko i web aplikacije s bazama, a i dalje je aktualan. OWASP Top 10 iz 2021.\ godine svrstava ga u kategoriju \emph{A03: Injection}, koja je pala s prvog na treće mjesto, no i dalje pogađa velik dio testiranih aplikacija \cite{owasp2021}. Razlog dugovječnosti je jednostavan. Spajanje niza znakova u tekst upita djeluje prirodno svakom programeru koji uči raditi s bazom, a posljedice tog spajanja nisu očite dok ih netko ne pokaže.
 
@@ -271,7 +266,7 @@ Račun baze kojim se aplikacija spaja treba imati samo ona prava koja mu trebaju
 
 \section{Slojevi iznad aplikacije}
 
-Web aplikacijski vatrozid (WAF) pregledava dolazni promet i blokira zahtjeve nalik napadu. Sustav za praćenje bilježi sumnjive upite. Ovi slojevi hvataju napade koje kod propusti i daju vrijeme za reakciju. Ne zamjenjuju ispravan kod jer rade s uzorcima, a napadač uzorke može zaobići. Korisni su kao dodatna crta obrane, ne kao prva.
+Web aplikacijski firewall (WAF) pregledava dolazni promet i blokira zahtjeve nalik napadu. Sustav za praćenje bilježi sumnjive upite. Ovi slojevi hvataju napade koje kod propusti i daju vrijeme za reakciju. Ne zamjenjuju ispravan kod jer rade s uzorcima, a napadač uzorke može zaobići. Korisni su kao dodatna crta obrane, ne kao prva.
 
 \begin{table}[hbtp]
 \centering
@@ -320,7 +315,7 @@ Obrana je poznata i nije skupa. Pripremljeni upiti razdvajaju naredbu od podatka
 \markboth{}{SAŽETAK}
 \addcontentsline{toc}{chapter}{Sažetak}
 
-SQL injection je napad u kojem korisnički ulaz iz podatkovnog dijela upita prijeđe u njegov naredbeni dio. Rad opisuje mehanizam napada na razini jednog upita, razvrstava napade na one s izravnim odgovorom, slijepe napade i napade drugog reda, te kroz demonstraciju u kontroliranom okruženju pokazuje zaobilaženje prijave i čitanje tuđe tablice. Zaštita se gradi oko pripremljenih upita, koji razdvajaju naredbu od podatka i uklanjaju uzrok napada, uz dodatne slojeve poput provjere ulaza, najmanjih ovlasti i web aplikacijskog vatrozida.
+SQL injection je napad u kojem korisnički ulaz iz podatkovnog dijela upita prijeđe u njegov naredbeni dio. Rad opisuje mehanizam napada na razini jednog upita, razvrstava napade na one s izravnim odgovorom, slijepe napade i napade drugog reda, te kroz demonstraciju u kontroliranom okruženju pokazuje zaobilaženje prijave i čitanje tuđe tablice. Zaštita se gradi oko pripremljenih upita, koji razdvajaju naredbu od podatka i uklanjaju uzrok napada, uz dodatne slojeve poput provjere ulaza, najmanjih ovlasti i web aplikacijskog firewalla.
 
 \section*{Ključne riječi}
 
@@ -339,10 +334,5 @@ SQL injection is an attack in which user input crosses from the data part of a q
 
 sql injection, database security, prepared statements, owasp, web security, injection attack
 
-
-\chapter*{Životopis}
-\addcontentsline{toc}{chapter}{Životopis}
-
-Ovdje pišem životopis u prvom licu jednine.
 
 \end{document}

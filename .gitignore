@@ -22,3 +22,9 @@ __pycache__/
 Teme-seminarskih-radova-2026.xlsx
 Teme-seminarskih-radova-2026.BACKUP.xlsx
 _Natural-Language-Writing-Style.md
+
+# macOS
+.DS_Store
+
+# Prazna lokalna datoteka (nije dio seminara)
+claude.md

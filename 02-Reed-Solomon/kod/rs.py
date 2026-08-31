@@ -279,7 +279,7 @@ def primjer_gf8():
 
 
 def primjer_gf256():
-    """RS(255,245) nad GF(256), skracen na 26 simbola kao kod QR koda."""
+    """RS nad GF(256), skracen na 17 podatkovnih + 10 paritetnih (27 simbola)."""
     gf = GF(8, 0x11D)                  # x^8 + x^4 + x^3 + x^2 + 1
     nsym = 10                          # ispravlja do 5 pogresnih simbola
     poruka = [ord(z) for z in "Reed-Solomon 1960"]
