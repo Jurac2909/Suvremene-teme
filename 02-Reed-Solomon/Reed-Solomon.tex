@@ -1,9 +1,11 @@
 \documentclass{mathos}
 
 \usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, calc, decorations.pathreplacing}
 
 \begin{document}
 \renewcommand\bibname{Literatura}
+\renewcommand{\proofname}{Dokaz}
 
 
 \begin{titlepage}
@@ -52,7 +54,7 @@ Reed-Solomonovi kodovi jedni su od najraširenijih takvih kodova. Irving Reed i 
 
 Snaga tih kodova je u radu sa simbolima, a ne s pojedinačnim bitovima. Jedan simbol, primjerice jedan bajt, kôd tretira kao cjelinu, pa se oštećenje cijelog bajta broji kao jedna pogreška bez obzira na to koliko je bitova u njemu promijenjeno. Zato su dobri protiv rafalnih pogrešaka, onih koje pogode niz uzastopnih bitova odjednom, kakve nastaju kod grebotine na disku.
 
-Nakon kratkog povijesnog osvrta, rad kreće od potrebne algebre, konačnih polja i polinoma nad njima. Zatim definira kôd i pokazuje kodiranje preko generirajućeg polinoma. Slijedi dekodiranje, koje je zahtjevniji dio, kroz sindrome, Berlekamp-Masseyev algoritam, Chienovu pretragu i Forneyev algoritam. Svaki korak prati potpuno proveden brojčani primjer nad malim poljem. Na kraju su primjene i kratak osvrt na granice kôda. Svi brojčani rezultati u radu proizvedeni su priloženom implementacijom \verb|kod/rs.py|.
+Nakon kratkog povijesnog osvrta, rad kreće od potrebne algebre, konačnih polja i polinoma nad njima. Zatim definira kôd, dokazuje njegovu minimalnu udaljenost i pokazuje kodiranje preko generirajućeg polinoma. Slijedi dekodiranje, koje je zahtjevniji dio, kroz sindrome, Berlekamp-Masseyev algoritam, Chienovu pretragu i Forneyev algoritam, uz zaseban odjeljak s rekurzijom i tablicom iteracija za Berlekamp-Masseyev korak. Svaki korak prati potpuno proveden brojčani primjer nad malim poljem. Nakon klasičnog dekodiranja dolaze dva proširenja koja se u praksi stalno koriste, dekodiranje uz brisanja i dekodiranje popisom koje prelazi klasičnu granicu ispravljivosti. Na kraju su primjene. Svi brojčani rezultati u radu proizvedeni su priloženom implementacijom \verb|kod/rs.py|.
 
 
 \chapter{Povijesni razvoj}\label{povijest}
@@ -114,28 +116,75 @@ gdje su koeficijenti $m_i$ elementi polja $GF(2^m)$. Kodiranje i dekodiranje su 
 
 Reed-Solomonov kôd označavamo s $RS(n, k)$. Ovdje je $n$ duljina kodne riječi u simbolima, a $k$ broj podatkovnih simbola. Za polje $GF(2^m)$ vrijedi $n = 2^m - 1$ za puni kôd, dok su kraće inačice dopuštene. Razlika $n - k$ je broj dodatnih, paritetnih simbola.
 
-\begin{teorem}[{vidjeti \cite[pogl.\ 5]{macwilliams}}]\label{tm:mds}
-Minimalna udaljenost Reed-Solomonovog kôda $RS(n,k)$ iznosi $d = n - k + 1$. Kôd time dostiže Singletonovu granicu $d \le n - k + 1$ s jednakošću, pa je optimalan u smislu razmaka.
+\begin{teorem}\label{tm:mds}
+Minimalna udaljenost Reed-Solomonovog kôda $RS(n,k)$ iznosi $d = n - k + 1$. Kôd time dostiže Singletonovu granicu $d \le n - k + 1$ s jednakošću, pa je optimalan u smislu razmaka (engl.\ \emph{maximum distance separable}, MDS).
 \end{teorem}
 
 \noindent
-Kôd s minimalnom udaljenošću $d$ ispravlja do
+Dokaz dajemo u odjeljku~\ref{gen}, nakon što uvedemo generirajući polinom, jer se oslanja na djeljivost svake kodne riječi njime. Kôd s minimalnom udaljenošću $d$ ispravlja do
 \begin{align*}
     t = \left\lfloor \frac{d-1}{2} \right\rfloor = \left\lfloor \frac{n-k}{2} \right\rfloor
 \end{align*}
 pogrešaka. Svaki dodatni paritetni simbol podiže sposobnost ispravljanja za pola pogreške. Dva paritetna simbola ispravljaju jednu pogrešku, deset ih ispravlja pet.
 
-\section{Generirajući polinom}
+\section{Generirajući polinom}\label{gen}
 
-Sistematsko kodiranje gradi kodnu riječ tako da podatak ostane vidljiv u njoj, a paritet se doda ispred. Temelji se na generirajućem polinomu
+Kodne riječi definiramo preko generirajućeg polinoma
 \begin{align}\label{eq:gen}
     g(x) = \prod_{i=1}^{n-k} (x - \alpha^i),
 \end{align}
-čije su nultočke uzastopne potencije primitivnog elementa. Kodna riječ mora biti djeljiva s $g(x)$. Za poruku $m(x)$ računamo
+čije su nultočke uzastopne potencije primitivnog elementa. Polinom $c(x)$ stupnja manjeg od $n$ je kodna riječ točno onda kada je djeljiv s $g(x)$. Kako $g(x)$ ima $n-k$ nultočaka $\alpha^1, \dots, \alpha^{n-k}$, ekvivalentan je uvjet
+\begin{align}\label{eq:zeros}
+    c(\alpha^i) = 0, \qquad i = 1, \dots, n-k.
+\end{align}
+Upravo na tih $n-k$ uzastopnih nultočaka počiva i minimalna udaljenost kôda. Sada možemo dokazati Teorem~\ref{tm:mds}.
+
+\begin{proof}[Dokaz Teorema~\ref{tm:mds}]
+Za linearan kôd minimalna udaljenost jednaka je najmanjoj težini kodne riječi različite od nule, gdje je težina broj koeficijenata različitih od nule. Pretpostavimo suprotno, da postoji kodna riječ $c(x) \ne 0$ težine $w$ s $1 \le w \le n-k$. Neka su njezini nenul koeficijenti $c_{j_1}, \dots, c_{j_w}$ na različitim pozicijama $j_1 < \dots < j_w$. Uzmemo li prvih $w$ jednadžbi iz \eqref{eq:zeros}, dobivamo sustav
+\begin{align*}
+    \sum_{l=1}^{w} c_{j_l}\, \big(\alpha^{j_l}\big)^i = 0, \qquad i = 1, \dots, w,
+\end{align*}
+s matricom $A = \big[(\alpha^{j_l})^i\big]_{i,l}$. Izlučivanjem $\alpha^{j_l}$ iz $l$-tog stupca ostaje Vandermondeova matrica s čvorovima $\alpha^{j_1}, \dots, \alpha^{j_w}$, pa je
+\begin{align*}
+    \det A = \Big(\prod_{l=1}^{w} \alpha^{j_l}\Big) \prod_{p < q} \big(\alpha^{j_q} - \alpha^{j_p}\big).
+\end{align*}
+Potencije $\alpha^{j_1}, \dots, \alpha^{j_w}$ su međusobno različite jer $\alpha$ ima red $n$, a svi $j_l$ leže u rasponu $0, \dots, n-1$. Zato su svi činitelji različiti od nule, pa je $\det A \ne 0$. Sustav tada ima samo trivijalno rješenje $c_{j_1} = \dots = c_{j_w} = 0$, što je u suprotnosti s pretpostavkom da su to nenul koeficijenti. Dakle svaka kodna riječ različita od nule ima težinu barem $n-k+1$, pa je $d \ge n-k+1$. S druge strane, Singletonova granica $d \le n-k+1$ vrijedi za svaki $(n,k)$ kôd \cite[pogl.\ 1]{macwilliams}. Slijedi $d = n-k+1$.
+\end{proof}
+
+\noindent
+Sistematsko kodiranje gradi kodnu riječ tako da $k$ podatkovnih simbola ostane doslovno vidljivo, a $n-k$ paritetnih simbola zauzme niske potencije $x^0, \dots, x^{n-k-1}$. Raspored je prikazan na slici~\ref{fig:rijec}. Za poruku $m(x)$ računamo
 \begin{align}\label{eq:kod}
     c(x) = x^{n-k} m(x) - \big(x^{n-k} m(x) \bmod g(x)\big).
 \end{align}
-Prvi član pomiče podatak za $n-k$ mjesta i ostavlja prazan prostor za paritet. Drugi član je ostatak dijeljenja, koji se oduzme kako bi razlika bila djeljiva s $g(x)$. U polju karakteristike 2 oduzimanje i zbrajanje su ista operacija.
+Prvi član pomiče podatak na visoke potencije $x^{n-k}, \dots, x^{n-1}$ i ostavlja niske potencije prazne. Drugi član je ostatak dijeljenja s $g(x)$, koji popuni to prazno mjesto paritetom; oduzimanjem ostatka razlika postaje djeljiva s $g(x)$, dakle kodna riječ. U polju karakteristike 2 oduzimanje i zbrajanje su ista operacija.
+
+\begin{figure}[hbtp]
+\centering
+\begin{tikzpicture}[font=\small]
+  \def\w{0.9}
+  \foreach \i in {0,...,3} {
+    \filldraw[fill=black!8] ({\i*\w},0) rectangle ({(\i+1)*\w},1);
+  }
+  \foreach \i in {4,...,6} {
+    \filldraw[fill=black!22] ({\i*\w},0) rectangle ({(\i+1)*\w},1);
+  }
+  \node at (0.5*\w,0.5) {$p_0$};
+  \node at (1.5*\w,0.5) {$p_1$};
+  \node at (2.5*\w,0.5) {$p_2$};
+  \node at (3.5*\w,0.5) {$p_3$};
+  \node at (4.5*\w,0.5) {$m_0$};
+  \node at (5.5*\w,0.5) {$m_1$};
+  \node at (6.5*\w,0.5) {$m_2$};
+  \draw [decorate,decoration={brace,amplitude=5pt}] (0,1.15) -- ({4*\w},1.15)
+        node[midway,above=4pt] {paritet, $n-k=4$};
+  \draw [decorate,decoration={brace,amplitude=5pt}] ({4*\w},1.15) -- ({7*\w},1.15)
+        node[midway,above=4pt] {podatak, $k=3$};
+  \node at (0.5*\w,-0.4) {\scriptsize $x^0$};
+  \node at (6.5*\w,-0.4) {\scriptsize $x^6$};
+\end{tikzpicture}
+\caption{Raspored simbola u sistematskoj kodnoj riječi $RS(7,3)$. Paritet zauzima niske potencije, podatak visoke.}
+\label{fig:rijec}
+\end{figure}
 
 \begin{primjer}\label{prim:kod}
 Za $RS(7,3)$ nad $GF(8)$ imamo $n-k = 4$ paritetna simbola, pa kôd ispravlja $t = 2$ pogreške. Generirajući polinom prema \eqref{eq:gen} ispada
@@ -149,10 +198,44 @@ Uzmimo poruku $m(x) = x^2$. Formula \eqref{eq:kod} daje kodnu riječ
 Provjera potvrđuje da je $c(\alpha^j) = 0$ za $j = 1, 2, 3, 4$, dakle kodna riječ je djeljiva s $g(x)$.
 \end{primjer}
 
+\section{Izvorna konstrukcija: kôd kao vrijednosti polinoma}\label{eval}
+
+Uvod je kôd motivirao slikom u kojoj je kodna riječ niz vrijednosti polinoma, dok ga gornja definicija gradi preko djeljivosti s $g(x)$. To su dvije slike istog objekta i vrijedi ih spojiti.
+
+U izvornoj konstrukciji Reeda i Solomona iz 1960.\ poruka je polinom $f$ stupnja manjeg od $k$, a kodna riječ je niz njegovih vrijednosti u $n$ različitih točaka polja:
+\begin{align*}
+    \big(f(\beta_0),\, f(\beta_1),\, \dots,\, f(\beta_{n-1})\big), \qquad \beta_i \text{ međusobno različiti}.
+\end{align*}
+Iz te slike minimalna udaljenost je gotovo očita. Dvije razne poruke daju polinome $f \ne h$, oba stupnja manjeg od $k$, pa je $f - h$ polinom različit od nule stupnja manjeg od $k$. Takav polinom ima najviše $k-1$ nultočaka, dakle vrijednosti $f$ i $h$ podudaraju se na najviše $k-1$ pozicija, a razlikuju se na barem $n - (k-1) = n-k+1$ njih. Udaljenost bilo koje dvije kodne riječi je stoga barem $n-k+1$. To je isti $d$ kao u Teoremu~\ref{tm:mds}, ovdje dobiven izravno iz činjenice da polinom stupnja manjeg od $k$ ima najviše $k-1$ nultočaka.
+
+Obje konstrukcije opisuju isti kôd, uz standardnu identifikaciju preko diskretne Fourierove preobrazbe nad konačnim poljem. Uvjet $c(\alpha^i)=0$ za $i=1,\dots,n-k$ iz \eqref{eq:zeros} znači da spektar niza koeficijenata iščezava na $n-k$ uzastopnih mjesta, što je dualno tomu da je riječ niz vrijednosti polinoma stupnja manjeg od $k$. Most između dviju slika je Mattson-Solomonov polinom \cite[pogl.\ 10]{macwilliams}. Zato se Reed-Solomonovi kodovi istovremeno vide kao kodovi vrijednosti polinoma i kao ciklički kodovi zadani generirajućim polinomom.
+
 
 \chapter{Dekodiranje}\label{dekodiranje}
 
-Dekodiranje je teži smjer. Primatelj dobiva riječ $r(x) = c(x) + e(x)$, gdje je $e(x)$ nepoznati polinom pogreške. Treba pronaći gdje su pogreške i kolike su, a da se ne zna ni koliko ih ima. Postupak ide u četiri koraka.
+Dekodiranje je teži smjer. Primatelj dobiva riječ $r(x) = c(x) + e(x)$, gdje je $e(x)$ nepoznati polinom pogreške. Treba pronaći gdje su pogreške i kolike su, a da se ne zna ni koliko ih ima. Postupak ide u četiri koraka, prikazana na slici~\ref{fig:pipeline}.
+
+\begin{figure}[hbtp]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[font=\small, >=Latex,
+   box/.style={draw, rounded corners, align=center, minimum height=9mm, inner sep=4pt},
+   node distance=5mm and 20mm]
+  \node[box] (s) {Sindromi};
+  \node[box, right=of s] (bm) {Berlekamp-\\Masseyev\\algoritam};
+  \node[box, right=of bm] (ch) {Chienova\\pretraga};
+  \node[box, right=of ch] (fo) {Forneyev\\algoritam};
+  \node[left=of s] (in) {$r(x)$};
+  \node[right=of fo] (out) {$\hat c(x)$};
+  \draw[->] (in) -- (s);
+  \draw[->] (s) -- node[above]{$S_j$} (bm);
+  \draw[->] (bm) -- node[above]{$\Lambda(x)$} (ch);
+  \draw[->] (ch) -- node[above]{pozicije} (fo);
+  \draw[->] (fo) -- node[above]{vrijednosti} (out);
+\end{tikzpicture}}
+\caption{Tok podataka pri dekodiranju, od primljene riječi $r(x)$ do ispravljene $\hat c(x)$.}
+\label{fig:pipeline}
+\end{figure}
 
 \section{Sindromi}
 
@@ -176,19 +259,52 @@ Nisu svi nula, pa riječ sadrži pogreške.
 
 \section{Polinom lokatora pogrešaka}
 
-Neka su pogreške na pozicijama iz skupa indeksa. Za svaku pogrešku definiramo lokator $X_l = \alpha^{i_l}$, gdje je $i_l$ pozicija. Polinom lokatora pogrešaka je
-\begin{align*}
-    \Lambda(x) = \prod_{l} (1 - X_l x),
-\end{align*}
-a njegove nultočke su inverzi lokatora. Sindromi i koeficijenti od $\Lambda(x)$ povezani su sustavom linearnih jednadžbi. Taj sustav rješava Berlekamp-Masseyev algoritam, koji gradi $\Lambda(x)$ postupno, dodajući jedan sindrom po koraku i ispravljajući polinom kad se ne slaže s idućim sindromom. Algoritam usput otkriva i broj pogrešaka, što unaprijed nismo znali.
+Neka su pogreške na $\nu$ nepoznatih pozicija. Za svaku definiramo lokator $X_l = \alpha^{i_l}$, gdje je $i_l$ pozicija $l$-te pogreške. Polinom lokatora pogrešaka je
+\begin{align}\label{eq:lokator}
+    \Lambda(x) = \prod_{l=1}^{\nu} (1 - X_l x) = 1 + \Lambda_1 x + \dots + \Lambda_\nu x^\nu,
+\end{align}
+a njegove nultočke su inverzi lokatora, $X_l^{-1}$. Sindromi i koeficijenti od $\Lambda(x)$ povezani su Newtonovim identitetima. Uz oznaku $S_j$ za sindrome vrijedi
+\begin{align}\label{eq:newton}
+    S_r + \sum_{j=1}^{\nu} \Lambda_j\, S_{r-j} = 0, \qquad r = \nu+1,\, \nu+2,\, \dots
+\end{align}
+Kad bismo znali $\nu$, ovo bi bio linearan sustav u $\Lambda_j$. Ne znamo ga, pa umjesto rješavanja fiksnog sustava tražimo $\Lambda(x)$ najmanjeg stupnja koji zadovoljava \eqref{eq:newton}. Taj posao radi Berlekamp-Masseyev algoritam.
+
+\section{Berlekamp-Masseyev algoritam}\label{bm}
+
+Algoritam je najzahtjevniji dio dekodera i vrijedi ga vidjeti u cijelosti, a ne kao crnu kutiju. Sindrome obrađuje jedan po jedan i uz put održava trenutni lokator $\Lambda(x)$, pomoćni polinom $B(x)$ iz zadnjeg pravog popravka, trenutni broj pogrešaka $L$ i pomak $m$. Na svakom koraku mjeri koliko trenutni $\Lambda(x)$ promašuje idući sindrom. Ta mjera je diskrepancija
+\begin{align}\label{eq:disc}
+    \Delta_r = S_r + \sum_{j=1}^{L} \Lambda_j\, S_{r-j}.
+\end{align}
+Ako je $\Delta_r = 0$, lokator još slaže sve viđene sindrome i mijenja se samo pomak, $m \leftarrow m+1$. Ako nije, lokator se popravlja pravilom
+\begin{align}\label{eq:update}
+    \Lambda(x) \leftarrow \Lambda(x) - \frac{\Delta_r}{b}\, x^m\, B(x),
+\end{align}
+gdje je $b$ diskrepancija zapamćena u zadnjem pravom popravku. Uz to, kad je $2L \le r-1$, stupanj lokatora mora narasti, pa se ažurira $L \leftarrow r - L$, spremi $B(x) \leftarrow \Lambda(x)$ prije popravka, $b \leftarrow \Delta_r$ i $m \leftarrow 1$. Inače stupanj ostaje isti i raste samo pomak, $m \leftarrow m+1$. Korak s uvjetom $2L \le r-1$ je onaj u kojem algoritam zaključuje da je vidio dovoljno neslaganja da poveća procijenjeni broj pogrešaka.
 
 \begin{primjer}\label{prim:lambda}
-Za sindrome iz primjera~\ref{prim:sind} Berlekamp-Masseyev algoritam vraća
+Provedimo algoritam na sindromima $(S_1, S_2, S_3, S_4) = (\alpha^4, \alpha^4, \alpha^5, \alpha^2)$ iz primjera~\ref{prim:sind}. Početno je $\Lambda(x) = 1$, $B(x) = 1$, $L = 0$, $b = 1$, $m = 1$. Tablica prati stanje nakon svakog sindroma.
+\end{primjer}
+
+\begin{table}[hbtp]
+\centering
+\begin{tabular}{|c|c|c|c|c|}\hline
+$r$ & $S_r$ & $\Delta_r$ & $L$ & $\Lambda(x)$ nakon koraka \\\hline
+-- & --       & --       & $0$ & $1$ \\\hline
+$1$ & $\alpha^4$ & $\alpha^4$ & $1$ & $\alpha^4 x + 1$ \\\hline
+$2$ & $\alpha^4$ & $\alpha^2$ & $1$ & $x + 1$ \\\hline
+$3$ & $\alpha^5$ & $1$        & $2$ & $\alpha^3 x^2 + x + 1$ \\\hline
+$4$ & $\alpha^2$ & $\alpha^1$ & $2$ & $x^2 + \alpha^3 x + 1$ \\\hline
+\end{tabular}
+\caption{Berlekamp-Masseyev algoritam na sindromima iz primjera~\ref{prim:sind}. Koraci $r=1$ i $r=3$ zadovoljavaju $2L \le r-1$ i podižu $L$; koraci $r=2$ i $r=4$ ne mijenjaju stupanj.}
+\label{tab:bm}
+\end{table}
+
+\noindent
+Provjerimo prva dva retka rukom. U koraku $r=1$ je $\Delta_1 = S_1 = \alpha^4$, uvjet $2L = 0 \le 0$ vrijedi, pa je $\Lambda(x) = 1 - \tfrac{\alpha^4}{1} x^1 \cdot 1 = \alpha^4 x + 1$ i $L$ raste na $1$. U koraku $r=2$ je $\Delta_2 = S_2 + \Lambda_1 S_1 = \alpha^4 + \alpha^4 \cdot \alpha^4 = \alpha^2$, ali sada $2L = 2 > 1$, pa stupanj ostaje $1$ i lokator postaje $x + 1$. Konačni rezultat je
 \begin{align*}
     \Lambda(x) = x^2 + \alpha^3 x + 1,
 \end{align*}
-polinom stupnja 2, što znači dvije pogreške. To se slaže s onim što smo ubacili.
-\end{primjer}
+polinom stupnja $2$, što znači dvije pogreške. To se slaže s onim što smo ubacili.
 
 \section{Chienova pretraga}
 
@@ -204,7 +320,7 @@ Ostaje odrediti kolike su pogreške. Forneyev algoritam daje vrijednost pogrešk
 \begin{align*}
     \Omega(x) = S(x)\, \Lambda(x) \bmod x^{n-k},
 \end{align*}
-a vrijednost pogreške na poziciji s lokatorom $X_l$ je
+a vrijednost pogreške na poziciji s lokatorom $X_l$ je\footnote{Formula u ovom obliku pretpostavlja da sindromi počinju od $j=1$, dakle $S_j = r(\alpha^j)$. Za drukčiji početni indeks $j_0$ pojavljuje se dodatni faktor $X_l^{1-j_0}$, koji priložena implementacija pokriva u općenitom slučaju.}
 \begin{align*}
     e_l = \frac{\Omega(X_l^{-1})}{\Lambda'(X_l^{-1})}.
 \end{align*}
@@ -222,7 +338,25 @@ izvornu kodnu riječ iz primjera~\ref{prim:kod}. Ispravak je potpun.
 
 Mali primjer nad $GF(8)$ pokazuje mehaniku, ali stvarni kodovi rade nad $GF(256)$. Priložena implementacija kodira 17 podatkovnih simbola s 10 paritetnih, pa ispravlja do 5 pogrešaka. Poruka je niz znakova \verb|Reed-Solomon 1960|. Nakon što se ošteti pet simbola na različitim pozicijama, dekoder pronalazi svih pet i vraća izvornu poruku bez greške.
 
-Granica ispravljivosti je oštra: uz 10 paritetnih simbola šest pogrešaka je previše, i implementacija to prijavljuje umjesto da vrati krivi rezultat. Time kôd zna kad je premašen, pa se pogrešan ispravak izbjegne.
+Granica jednoznačnog dekodiranja je oštra. Uz 10 paritetnih simbola i $t = 5$, šest pogrešaka je previše da bi se jamčila jedinstvena najbliža kodna riječ, i implementacija to prijavljuje umjesto da vrati krivi rezultat. Kôd zna kad je premašen, pa se pogrešan ispravak može izbjeći. Vrijedi naglasiti što točno ta granica znači. Ona je oštra za jednoznačno dekodiranje, dakle za zahtjev da dekoder vrati jednu, sigurno najbližu kodnu riječ. Ako dopustimo da dekoder vrati kratak popis kandidata, granica se pomiče dalje, o čemu govori odjeljak~\ref{list}.
+
+\section{Brisanja}\label{brisanja}
+
+Do sada smo pretpostavljali da su i pozicije i vrijednosti pogrešaka nepoznate. Često je poznato barem gdje je podatak nepouzdan. Demodulator ili unutarnji kôd znaju označiti simbol kao sumnjiv, ali bez ispravne vrijednosti. Takva pozicija zove se \emph{brisanje} (engl.\ \emph{erasure}).
+
+Poznata pozicija je pola manje posla. Nepoznata pogreška troši dva paritetna simbola, jedan za pronalazak pozicije i jedan za vrijednost. Brisanje troši samo jedan, jer je pozicija već poznata. Zato Reed-Solomonov kôd s $n-k$ paritetnih simbola ispravlja svaki uzorak s $\varepsilon$ brisanja i $\tau$ nepoznatih pogrešaka čim je
+\begin{align}\label{eq:erasure}
+    2\tau + \varepsilon \le n - k.
+\end{align}
+U graničnom slučaju bez nepoznatih pogrešaka to je $n-k$ brisanja, dvostruko više nego pogrešaka. Dekodiranje se malo mijenja. Iz poznatih pozicija brisanja sagradi se njihov lokator, sindromi se njime prilagode (Forneyeva modifikacija), a na prilagođenim sindromima Berlekamp-Masseyev algoritam traži još samo nepoznate pogreške. Chien i Forney onda rade kao prije, na uniji pozicija.
+
+\section{Dekodiranje popisom}\label{list}
+
+Klasični dekoder iz ovog poglavlja je jednoznačan. Unutar polumjera $t = \lfloor (n-k)/2 \rfloor$ oko primljene riječi leži najviše jedna kodna riječ i dekoder je vrati. Izvan tog polumjera može ih biti više ili nijedna, pa jednoznačni dekoder mora odustati. To je smisao granice iz prethodnog odjeljka.
+
+Devedesetih se pokazalo da granica nije kraj priče. Sudan je 1997.\ dao algoritam koji za kodove niske stope vraća \emph{popis} svih kodnih riječi unutar polumjera većeg od $t$ \cite{sudan}. Guruswami i Sudan poboljšali su ga 1999.\ do polumjera blizu Johnsonove granice, približno $n - \sqrt{n k}$, koja je za niske stope osjetno veća od $t$ \cite{gurusudan}. Umjesto jednog odgovora dekoder vraća kratak popis kandidata, iz kojeg se pravi bira dodatnim podatkom, primjerimice kontrolnim zbrojem.
+
+Ideja je geometrijska. Kroz $n$ točaka $(\alpha^i, r_i)$ provuče se polinom dviju varijabli $Q(x,y)$ koji u svakoj točki iščezava s dovoljnom kratnošću. Zatim se $Q(x,y)$ faktorizira, a svaki činitelj oblika $y - f(x)$ s $f$ stupnja manjeg od $k$ daje jednog kandidata za poruku. Kratnost u interpolaciji je ono što dopušta veći polumjer nego kod jednoznačnog dekodera. Ovaj smjer je i danas aktivan, pa Reed-Solomonovi kodovi, iako opisani 1960., ostaju predmet suvremenih istraživanja.
 
 
 \chapter{Primjene}\label{primjene}
@@ -230,7 +364,7 @@ Granica ispravljivosti je oštra: uz 10 paritetnih simbola šest pogrešaka je p
 \noindent
 Reed-Solomonovi kodovi su posvuda gdje podaci prolaze kroz nepouzdan kanal ili medij.
 
-Na CD-u i DVD-u koristi se kombinacija dvaju isprepletenih Reed-Solomonovih kodova, poznata kao CIRC. Isprepletanje razbija dugu grebotinu na mnogo kratkih pogrešaka koje pojedini kôd lako ispravlja. Zahvaljujući tome disk s vidljivim ogrebotinama i dalje svira bez preskakanja.
+Na CD-u i DVD-u koristi se kombinacija dvaju isprepletenih Reed-Solomonovih kodova, poznata kao CIRC. Dva kôda rade u slijedu. Unutarnji kôd ispravi lakše pogreške, a teže simbole ne pogađa naslijepo nego ih označi kao brisanja i proslijedi vanjskom kôdu. Vanjski kôd te oznake iskoristi po pravilu \eqref{eq:erasure}, u kojem poznata pozicija stoji upola jeftinije od nepoznate pogreške. Isprepletanje između dvaju kôda razbija dugu grebotinu na mnogo kratkih oštećenja raspoređenih po više kodnih riječi. Zajedno to znači da disk s vidljivim ogrebotinama i dalje svira bez preskakanja. Upravo prosljeđivanje brisanja iz unutarnjeg u vanjski kôd objašnjava zašto CIRC radi bolje nego dva neovisna kôda.
 
 QR kodovi ugrađuju Reed-Solomonov paritet u samu sliku. Ovisno o razini zaštite, ispravlja se od 7 do 30 posto oštećenih simbola. Zato QR kôd radi i kad je dio prekriven logotipom ili zamrljan.
 
@@ -244,7 +378,7 @@ U svemirskim misijama kôd je bio dio komunikacije sonde Voyager, gdje se slabi 
 \noindent
 Reed-Solomonovi kodovi spajaju čistu algebru s vrlo praktičnim rezultatom. Poruka postaje polinom nad konačnim poljem, paritet nastaje iz djeljivosti generirajućim polinomom, a dekodiranje kroz četiri koraka vraća izvorne podatke i onda kad je dio primljenog niza oštećen. Proveden primjer nad $GF(8)$ pokazao je cijeli put, od kodiranja preko sindroma i lokatora do konačnog ispravka dvije pogreške.
 
-Snaga kôda leži u radu sa simbolima i u dostizanju Singletonove granice, čime je optimalan u smislu razmaka među kodnim riječima. Granica ispravljivosti je poznata unaprijed i kôd zna kad je premašen. Ta kombinacija pouzdanosti i predvidivosti objašnjava zašto je kôd iz 1960.\ godine i danas ugrađen u diskove, QR kodove, sustave pohrane i svemirske veze.
+Snaga kôda leži u radu sa simbolima i u dostizanju Singletonove granice, dokazanoj u Teoremu~\ref{tm:mds}, čime je optimalan u smislu razmaka među kodnim riječima. Granica jednoznačnog dekodiranja je poznata unaprijed i kôd zna kad je premašen, a dekodiranje popisom pokazuje da se i preko te granice može ići. Ta kombinacija čvrste teorije i praktične pouzdanosti objašnjava zašto je kôd iz 1960.\ godine i danas ugrađen u diskove, QR kodove, sustave pohrane i svemirske veze, i zašto je i dalje predmet istraživanja.
 
 
 \begin{thebibliography}{30}
@@ -264,6 +398,12 @@ Snaga kôda leži u radu sa simbolima i u dostizanju Singletonove granice, čime
 
 \bibitem{geisel}
 {\sc W.~A.~Geisel}, {\em Tutorial on Reed-Solomon Error Correction Coding}, NASA Technical Memorandum 102162, 1990.
+
+\bibitem{sudan}
+{\sc M.~Sudan}, {\em Decoding of Reed-Solomon codes beyond the error-correction bound}, Journal of Complexity {\bf 13}(1997), 180--193.
+
+\bibitem{gurusudan}
+{\sc V.~Guruswami, M.~Sudan}, {\em Improved decoding of Reed-Solomon and algebraic-geometry codes}, IEEE Transactions on Information Theory {\bf 45}(1999), 1757--1767.
 \end{thebibliography}
 
 
@@ -271,11 +411,11 @@ Snaga kôda leži u radu sa simbolima i u dostizanju Singletonove granice, čime
 \markboth{}{SAŽETAK}
 \addcontentsline{toc}{chapter}{Sažetak}
 
-Reed-Solomonovi kodovi ispravljaju pogreške nastale prijenosom podataka kroz nepouzdane kanale. Rad izlaže potrebnu algebru konačnih polja $GF(2^m)$ i polinoma nad njima, definira kôd $RS(n,k)$ i njegovu minimalnu udaljenost, te opisuje sistematsko kodiranje generirajućim polinomom. Dekodiranje je prikazano kroz sindrome, Berlekamp-Masseyev algoritam, Chienovu pretragu i Forneyev algoritam, uz potpuno proveden brojčani primjer nad poljem $GF(8)$ koji ispravlja dvije pogreške. Na kraju su navedene primjene u optičkim medijima, QR kodovima, sustavima pohrane i svemirskim komunikacijama.
+Reed-Solomonovi kodovi ispravljaju pogreške nastale prijenosom podataka kroz nepouzdane kanale. Rad izlaže potrebnu algebru konačnih polja $GF(2^m)$ i polinoma nad njima, definira kôd $RS(n,k)$ i dokazuje da mu je minimalna udaljenost $d = n-k+1$, te opisuje sistematsko kodiranje generirajućim polinomom i vezu s izvornom konstrukcijom preko vrijednosti polinoma. Dekodiranje je prikazano kroz sindrome, Berlekamp-Masseyev algoritam s tablicom iteracija, Chienovu pretragu i Forneyev algoritam, uz potpuno proveden brojčani primjer nad poljem $GF(8)$ koji ispravlja dvije pogreške. Slijede dva proširenja, dekodiranje uz brisanja i dekodiranje popisom koje prelazi klasičnu granicu ispravljivosti. Na kraju su navedene primjene u optičkim medijima, QR kodovima, sustavima pohrane i svemirskim komunikacijama.
 
 \section*{Ključne riječi}
 
-reed-solomonovi kodovi, ispravljanje pogrešaka, konačna polja, generirajući polinom, berlekamp-massey, kodiranje kanala
+reed-solomonovi kodovi, ispravljanje pogrešaka, konačna polja, generirajući polinom, minimalna udaljenost, berlekamp-massey, brisanja, dekodiranje popisom, kodiranje kanala
 
 
 \chapter*{Naslov rada na engleskom jeziku}
@@ -284,11 +424,11 @@ reed-solomonovi kodovi, ispravljanje pogrešaka, konačna polja, generirajući p
 \section*{Summary}
 \addcontentsline{toc}{chapter}{Summary}
 
-Reed-Solomon codes correct errors introduced when data passes through unreliable channels. This paper presents the required algebra of finite fields $GF(2^m)$ and polynomials over them, defines the $RS(n,k)$ code and its minimum distance, and describes systematic encoding by a generator polynomial. Decoding is shown through syndromes, the Berlekamp-Massey algorithm, the Chien search, and the Forney algorithm, with a fully worked numerical example over $GF(8)$ that corrects two errors. Applications in optical media, QR codes, storage systems, and space communication close the paper.
+Reed-Solomon codes correct errors introduced when data passes through unreliable channels. This paper presents the required algebra of finite fields $GF(2^m)$ and polynomials over them, defines the $RS(n,k)$ code and proves that its minimum distance is $d = n-k+1$, and describes systematic encoding by a generator polynomial together with its link to the original evaluation construction. Decoding is shown through syndromes, the Berlekamp-Massey algorithm with an iteration table, the Chien search, and the Forney algorithm, with a fully worked numerical example over $GF(8)$ that corrects two errors. Two extensions follow, erasure decoding and list decoding beyond the classical error-correction bound. Applications in optical media, QR codes, storage systems, and space communication close the paper.
 
 \section*{Keywords}
 
-reed-solomon codes, error correction, finite fields, generator polynomial, berlekamp-massey, channel coding
+reed-solomon codes, error correction, finite fields, generator polynomial, minimum distance, berlekamp-massey, erasures, list decoding, channel coding
 
 
 \end{document}
